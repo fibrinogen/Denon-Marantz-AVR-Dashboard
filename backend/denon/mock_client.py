@@ -36,6 +36,9 @@ class MockDenonClient(DenonTelnetClient):
     def __init__(self) -> None:
         super().__init__("mock", 0)
         self._connected = True
+        self._nse_cursor = 1
+        self._nse_playing_idx: int | None = None
+        self._nse_folder = "Internet Radio"
         self.state.update({
             "power": True,
             "volume": 45.0,
@@ -111,6 +114,28 @@ class MockDenonClient(DenonTelnetClient):
             return f"MV{int(vol)}"
         return f"MV{int(vol):02d}5"
 
+    def _nse_lines(self) -> list[str]:
+        entries = [
+            (1, True, "Favorites"),
+            (2, True, "Local Stations"),
+            (3, False, "WDR 2 Köln"),
+            (4, False, "Deutschlandfunk"),
+            (5, False, "SWR3"),
+            (6, False, "Jazz24"),
+            (7, False, "BBC Radio 6"),
+        ]
+        lines = [f"NSE0{self._nse_folder}"]
+        for idx, is_folder, label in entries:
+            flag = 0x02 if is_folder else 0x00
+            if idx == self._nse_cursor:
+                flag |= 0x08
+            if idx == self._nse_playing_idx:
+                flag |= 0x01
+            lines.append(f"NSE{idx}{chr(flag)}{label}")
+        status = f"{self._nse_cursor}/7" if self._nse_playing_idx is None else "Playing"
+        lines.append(f"NSE8{status}")
+        return lines
+
     def _simulate(self, cmd: str) -> list[str]:  # noqa: C901
         s = self.state
 
@@ -143,8 +168,51 @@ class MockDenonClient(DenonTelnetClient):
         # Source
         if cmd == "SI?":
             return [f"SI{s['source']}"]
+        if cmd in ("SIIRADIO", "SINET"):
+            return [cmd, *self._nse_lines()]
         if cmd.startswith("SI") and len(cmd) > 2:
             return [cmd]
+
+        # Legacy Net/USB OSD & presets (must precede generic MS check)
+        if cmd == "NSE":
+            return self._nse_lines()
+        if cmd == "NS90":
+            self._nse_cursor = max(1, self._nse_cursor - 1)
+            return self._nse_lines()
+        if cmd == "NS91":
+            self._nse_cursor = min(7, self._nse_cursor + 1)
+            return self._nse_lines()
+        if cmd == "NS92":
+            self._nse_folder = "Internet Radio"
+            return self._nse_lines()
+        if cmd in ("NS93", "NS94"):
+            if self._nse_cursor <= 2:
+                self._nse_folder = "Favorites" if self._nse_cursor == 1 else "Local Stations"
+            else:
+                self._nse_playing_idx = self._nse_cursor
+            return self._nse_lines()
+        if cmd == "NS9A":
+            self._nse_playing_idx = None if self._nse_playing_idx is not None else self._nse_cursor
+            return self._nse_lines()
+        if cmd == "NS9B":
+            self._nse_playing_idx = None
+            return self._nse_lines()
+        if cmd == "NS9C":
+            self._nse_playing_idx = None
+            return self._nse_lines()
+        if cmd == "NS9D":
+            self._nse_cursor = min(7, self._nse_cursor + 1)
+            self._nse_playing_idx = self._nse_cursor
+            return self._nse_lines()
+        if cmd == "NS9E":
+            self._nse_cursor = max(3, self._nse_cursor - 1)
+            self._nse_playing_idx = self._nse_cursor
+            return self._nse_lines()
+        if cmd.startswith(("ZMFAVORITE", "MSQUICK")) and cmd[-1:].isdigit():
+            slot = int(cmd[-1])
+            self._nse_cursor = min(7, slot + 2)
+            self._nse_playing_idx = self._nse_cursor
+            return ["SIIRADIO", *self._nse_lines()]
 
         # Surround mode
         if cmd == "MS?":

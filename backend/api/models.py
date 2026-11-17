@@ -184,7 +184,42 @@ class EcoModeRequest(BaseModel):
     mode: Literal["ON", "AUTO", "OFF"]
 
 
+class NetSwitchSourceRequest(BaseModel):
+    source: Literal["IRADIO", "NET", "SERVER", "FAVORITES", "USB", "USB/IPOD"] = "IRADIO"
+
+
+class NetNavRequest(BaseModel):
+    action: Literal["up", "down", "left", "right", "enter", "play_pause", "pause", "stop", "next", "prev"]
+
+
+class NetSelectRowRequest(BaseModel):
+    target_index: int = Field(..., ge=1, le=7, description="Visible OSD row index (1–7)")
+
+
+class NetPresetRequest(BaseModel):
+    preset: Literal[
+        "ZMFAVORITE1", "ZMFAVORITE2", "ZMFAVORITE3", "ZMFAVORITE4",
+        "MSQUICK1", "MSQUICK2", "MSQUICK3", "MSQUICK4",
+    ]
+
+
 # -- Response models --
+
+class NetOsdItem(BaseModel):
+    index: int
+    text: str = ""
+    is_selected: bool = False
+    is_playing: bool = False
+    is_folder: bool = False
+
+
+class NetOsdState(BaseModel):
+    title: str = ""
+    items: list[NetOsdItem] = Field(
+        default_factory=lambda: [NetOsdItem(index=i) for i in range(1, 8)]
+    )
+    status_line: str = ""
+
 
 class StatusResponse(BaseModel):
     connected: bool
@@ -227,6 +262,7 @@ class StatusResponse(BaseModel):
     now_playing: dict[str, Any] | None = None
     play_state: str | None = None
     stream_quality: str | None = None
+    net_osd: NetOsdState = Field(default_factory=NetOsdState)
 
 
 class TimeSettingsResponse(BaseModel):

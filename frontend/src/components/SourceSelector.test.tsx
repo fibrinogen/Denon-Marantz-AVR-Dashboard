@@ -58,4 +58,19 @@ describe('SourceSelector', () => {
     render(<SourceSelector state={state} sendCommand={vi.fn()} sources={[]} />)
     expect(screen.queryByRole('button', { name: /PS5/ })).toBeNull()
   })
+
+  it('routes IRADIO badge click to onOpenLegacyRadio when HEOS is disconnected', () => {
+    const onOpenLegacyRadio = vi.fn()
+    render(
+      <SourceSelector
+        state={{ ...state, heos_connected: false }}
+        sendCommand={vi.fn()}
+        sources={sources}
+        sourceNameMap={nameMap}
+        onOpenLegacyRadio={onOpenLegacyRadio}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Browse radio stations' }))
+    expect(onOpenLegacyRadio).toHaveBeenCalledTimes(1)
+  })
 })

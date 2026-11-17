@@ -16,6 +16,7 @@ from denon.heos_client import HeosClient
 from denon.heos_media import detect_stream_quality, resolve_heos_service
 from denon.heos_message import parse_heos_message
 from denon.telnet_client import DenonTelnetClient
+from denon.telnet_parser import default_net_osd
 from night_mode_config import default_night_mode_config, normalize_night_mode_config
 from persistence import JsonStore
 
@@ -57,6 +58,7 @@ class AppState:
         self._lock = asyncio.Lock()
         self._connect_lock = asyncio.Lock()
         self._broadcast_lock = asyncio.Lock()
+        self._net_nav_lock = asyncio.Lock()
         self._last_broadcast_json: str | None = None
 
     @asynccontextmanager
@@ -240,6 +242,7 @@ class AppState:
             "now_playing": self.media_state.get("now_playing"),
             "play_state": self.media_state.get("play_state"),
             "stream_quality": detect_stream_quality(self.media_state.get("now_playing")),
+            "net_osd": state.get("net_osd") or default_net_osd(),
         }
 
     async def broadcast_state(self, force: bool = False) -> None:

@@ -124,7 +124,7 @@ STATUS_KEYS = {
     "dialog_level", "dialog_level_enabled", "multeq", "dynamic_eq", "dynamic_volume",
     "ref_level_offset", "sleep_timer", "night_mode_enabled", "night_mode_snapshot",
     "eco_mode", "z2_power", "z2_volume", "z2_muted", "z2_sleep_timer", "z2_source",
-    "z2_source_name", "now_playing", "play_state", "stream_quality",
+    "z2_source_name", "now_playing", "play_state", "stream_quality", "net_osd",
 }
 
 

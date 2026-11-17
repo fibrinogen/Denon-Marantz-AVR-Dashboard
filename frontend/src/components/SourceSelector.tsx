@@ -106,6 +106,7 @@ interface Props {
   radioFavorites?: RadioFavorite[]
   onRenameSource?: (code: string, name: string | null) => void
   onRadioFavoriteChange?: (favorite: RadioFavorite, enabled: boolean) => void
+  onOpenLegacyRadio?: () => void
   zone?: Zone
 }
 
@@ -118,6 +119,7 @@ export default function SourceSelector({
   radioFavorites = [],
   onRenameSource,
   onRadioFavoriteChange,
+  onOpenLegacyRadio,
   zone = 'main',
 }: Props) {
   const current = zone === 'main' ? state?.source : state?.z2_source
@@ -268,10 +270,16 @@ export default function SourceSelector({
               {s.id === 'IRADIO' && !editMode && (
                 <button
                   type="button"
-                  onClick={() => setRadioBrowserOpen(true)}
+                  onClick={() => {
+                    if (state?.heos_connected === false && onOpenLegacyRadio) {
+                      onOpenLegacyRadio()
+                    } else {
+                      setRadioBrowserOpen(true)
+                    }
+                  }}
                   aria-label="Browse radio stations"
                   className="absolute bottom-1.5 right-1.5 p-1 rounded-lg bg-denon-surface/80 hover:bg-denon-gold/20 hover:text-denon-gold text-denon-muted transition-all"
-                  title="Browse stations"
+                  title={state?.heos_connected === false && onOpenLegacyRadio ? 'Open Telnet Radio OSD' : 'Browse stations'}
                 >
                   <RadioTowerIcon />
                 </button>

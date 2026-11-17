@@ -8,6 +8,7 @@ interface Props {
   post: PostFn
   /** Inputs the HEOS transport drives (from /device.media_sources). */
   mediaSources: string[]
+  onOpenLegacyNet?: () => void
   zone?: Zone
 }
 
@@ -19,7 +20,7 @@ function playStateLabel(playState: string | undefined): string {
 
 export const HEOS_OFFLINE_HINT = 'Media control unavailable - HEOS not connected'
 
-export default function MediaControls({ state, post, mediaSources, zone = 'main' }: Props) {
+export default function MediaControls({ state, post, mediaSources, onOpenLegacyNet, zone = 'main' }: Props) {
   const source = zone === 'main' ? state?.source : state?.z2_source
   const mediaCapable = source != null && mediaSources.includes(source)
   const heosDown = state?.heos_connected === false
@@ -123,7 +124,18 @@ export default function MediaControls({ state, post, mediaSources, zone = 'main'
         </button>
       </div>
       {heosDown && (
-        <p className="text-center text-xs text-denon-muted mt-3">{HEOS_OFFLINE_HINT}</p>
+        <div className="mt-3 text-center space-y-2">
+          <p className="text-xs text-denon-muted">{HEOS_OFFLINE_HINT}</p>
+          {onOpenLegacyNet && zone === 'main' && (
+            <button
+              type="button"
+              onClick={onOpenLegacyNet}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-denon-gold/15 text-denon-gold hover:bg-denon-gold/25 border border-denon-gold/30 transition-all"
+            >
+              Open Net / Radio (Telnet) →
+            </button>
+          )}
+        </div>
       )}
     </div>
   )

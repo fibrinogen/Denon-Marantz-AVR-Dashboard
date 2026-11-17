@@ -20,7 +20,7 @@ from .const import (
     TELNET_SUPERVISOR_INTERVAL,
     TELNET_TIMEOUT,
 )
-from .telnet_parser import TelnetParserMixin
+from .telnet_parser import TelnetParserMixin, default_net_osd
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,10 +30,20 @@ _LOGGER = logging.getLogger(__name__)
 _REDACTED_RX_PREFIXES = ("NSFRN", "SSFUN", "SSSOD")
 
 
+def _decode_telnet_line(raw: bytes) -> str:
+    """Decode a telnet line: UTF-8 first, falling back to Windows-1252/Latin-1."""
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("cp1252", errors="replace")
+
+
 def _redact_rx(line: str) -> str:
     for prefix in _REDACTED_RX_PREFIXES:
         if line.startswith(prefix):
             return f"{prefix} <redacted>"
+    if line.startswith("NSE"):
+        return "".join(c if ord(c) >= 0x20 and ord(c) != 0x7F else f"\\x{ord(c):02x}" for c in line)
     return line
 
 
@@ -89,6 +99,7 @@ class DenonTelnetClient(TelnetParserMixin):
             "eco_mode": None,
             "sound_decoder": None,
             "surround_mode_list": [],
+            "net_osd": default_net_osd(),
             # Zone 2
             "z2_power": None,
             "z2_volume": None,
@@ -333,7 +344,9 @@ class DenonTelnetClient(TelnetParserMixin):
                     # Split on \r (0x0D) — Denon protocol line terminator
                     while b"\r" in buf:
                         line_bytes, buf = buf.split(b"\r", 1)
-                        text = line_bytes.decode(errors="ignore").strip()
+                        # Preserve NSE control-byte flags (0x00..0x1f, incl. \t and \n)
+                        raw_text = _decode_telnet_line(line_bytes).lstrip("\n")
+                        text = raw_text if raw_text.startswith("NSE") else raw_text.strip()
                         if text:
                             _LOGGER.debug("RX: %s", _redact_rx(text))
                             await self._parse(text)

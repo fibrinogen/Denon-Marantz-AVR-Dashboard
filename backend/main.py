@@ -18,7 +18,7 @@ from denon.const import COMMAND_RE
 from denon.discovery import discover_receivers
 from night_mode import reconcile_night_mode_schedule
 from radio_service import cancel_preload, ensure_radio_preload
-from routes import audio, media, metrics, power, radio, status, volume, zone2
+from routes import audio, media, metrics, net, power, radio, status, volume, zone2
 from state import app_state
 
 # ---- Logging ----
@@ -280,6 +280,7 @@ app.include_router(volume.router)
 app.include_router(audio.router)
 app.include_router(zone2.router)
 app.include_router(media.router)
+app.include_router(net.router)
 app.include_router(radio.router)
 app.include_router(status.router)
 # Root-level /metrics — must be registered before the catch-all static mount.

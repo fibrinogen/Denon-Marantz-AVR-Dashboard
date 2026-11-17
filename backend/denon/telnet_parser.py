@@ -20,6 +20,29 @@ _LOGGER = logging.getLogger(__name__)
 OPSMLALL_MAX_ENTRIES = 256
 
 
+def default_net_osd() -> dict[str, Any]:
+    """Return an empty 9-line Denon Net/USB OSD state structure."""
+    return {
+        "title": "",
+        "items": [
+            {
+                "index": i,
+                "text": "",
+                "is_selected": False,
+                "is_playing": False,
+                "is_folder": False,
+            }
+            for i in range(1, 8)
+        ],
+        "status_line": "",
+    }
+
+
+def _clean_osd_text(raw: str) -> str:
+    """Remove non-printable control characters and outer whitespace from OSD text."""
+    return "".join(c for c in raw if ord(c) >= 0x20 and ord(c) != 0x7F).strip()
+
+
 class TelnetParserMixin:
     """Line parser. The host class provides `state`, `_opsmlall_buffer`,
     `_opsmlall_overflow_logged` and `_mark_dirty()`."""
@@ -60,6 +83,7 @@ class TelnetParserMixin:
             (re.compile(r"^SSSOD(.+)$"), self._handle_sssod),
             (re.compile(r"^SD(.+)$"), self._handle_sd),
             (re.compile(r"^OPSMLALL(.*)$"), self._handle_opsmlall),
+            (re.compile(r"^NSE(\d)(.*)$", re.DOTALL), self._handle_nse),
             # Z2 payloads: power/mute, sleep (SLP<value>), volume (2-3 digits),
             # or a source code (uppercase + digits + '/', 2-12 chars). The
             # source class is intentionally tight so unknown Z2... lines do
@@ -320,6 +344,53 @@ class TelnetParserMixin:
         elif val:
             self.state["z2_source"] = val
             return True
+        return False
+
+    def _handle_nse(self, match: re.Match) -> bool:
+        line_idx = int(match.group(1))
+        payload = match.group(2)
+        osd = self.state.setdefault("net_osd", default_net_osd())
+
+        if line_idx == 0:
+            title = _clean_osd_text(payload)
+            if osd.get("title") != title:
+                osd["title"] = title
+                return True
+            return False
+
+        if 1 <= line_idx <= 7:
+            is_playing = False
+            is_folder = False
+            is_selected = False
+            if payload and ord(payload[0]) < 0x20:
+                flags = ord(payload[0])
+                is_playing = bool(flags & 0x01)
+                is_folder = bool(flags & 0x02)
+                is_selected = bool(flags & 0x08)
+                text = _clean_osd_text(payload[1:])
+            else:
+                text = _clean_osd_text(payload)
+
+            entry = {
+                "index": line_idx,
+                "text": text,
+                "is_selected": is_selected,
+                "is_playing": is_playing,
+                "is_folder": is_folder,
+            }
+            items = osd.setdefault("items", default_net_osd()["items"])
+            if items[line_idx - 1] != entry:
+                items[line_idx - 1] = entry
+                return True
+            return False
+
+        if line_idx == 8:
+            status_line = _clean_osd_text(payload)
+            if osd.get("status_line") != status_line:
+                osd["status_line"] = status_line
+                return True
+            return False
+
         return False
 
     def _parse_volume(self, s: str) -> float | None:

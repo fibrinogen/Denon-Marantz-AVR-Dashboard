@@ -3,7 +3,12 @@ node_modules
 __pycache__
 *.pyc
 .env
+.venv
+backend/.venv
+.pytest_cache
+backend/.pytest_cache
 frontend/node_modules
 frontend/dist
+frontend/.vite
 *.pdf
 .DS_Store

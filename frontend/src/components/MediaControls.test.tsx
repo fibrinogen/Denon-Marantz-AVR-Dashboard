@@ -58,4 +58,18 @@ describe('MediaControls', () => {
     render(<MediaControls state={{ ...base, play_state: 'stop' }} post={okPost()} mediaSources={MEDIA} />)
     expect(screen.getByText('■ Stopped')).toBeInTheDocument()
   })
+
+  it('offers shortcut to legacy Telnet Net/Radio view when HEOS is down', () => {
+    const onOpenLegacyNet = vi.fn()
+    render(
+      <MediaControls
+        state={{ ...base, heos_connected: false }}
+        post={okPost()}
+        mediaSources={MEDIA}
+        onOpenLegacyNet={onOpenLegacyNet}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Open Net \/ Radio \(Telnet\)/ }))
+    expect(onOpenLegacyNet).toHaveBeenCalledTimes(1)
+  })
 })

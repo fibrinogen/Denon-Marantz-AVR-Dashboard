@@ -33,6 +33,20 @@ export interface SurroundModeEntry {
   active?: boolean
 }
 
+export interface NetOsdItem {
+  index: number
+  text: string
+  is_selected: boolean
+  is_playing: boolean
+  is_folder: boolean
+}
+
+export interface NetOsdState {
+  title: string
+  items: NetOsdItem[]
+  status_line: string
+}
+
 // Mirrors backend StatusResponse — the WebSocket state payload.
 // Fields are optional because the receiver populates them incrementally; the
 // raw JSON frame is narrowed to ReceiverState at the WebSocket boundary.
@@ -78,6 +92,7 @@ export interface ReceiverState {
   now_playing?: NowPlaying
   play_state?: string  // 'play' | 'pause' | 'stop' from HEOS
   stream_quality?: string
+  net_osd?: NetOsdState
 }
 
 export interface SourceEntry {

@@ -82,3 +82,25 @@ async def test_start_demo_installs_mock():
     await state.start_demo()
     assert isinstance(state.telnet, MockDenonClient)
     assert state.telnet.connected is True
+
+
+@pytest.mark.asyncio
+async def test_mock_net_osd_navigation(mock_client):
+    """MockDenonClient simulates NSE queries, cursor moves, Enter, and presets."""
+    await mock_client.send("NSE")
+    osd = mock_client.state["net_osd"]
+    assert osd["title"] == "Internet Radio"
+    assert osd["items"][0]["is_selected"] is True
+    assert osd["items"][0]["is_folder"] is True
+
+    await mock_client.send("NS91")
+    await mock_client.send("NS91")
+    assert mock_client.state["net_osd"]["items"][2]["is_selected"] is True
+    assert mock_client.state["net_osd"]["items"][2]["text"] == "WDR 2 Köln"
+
+    await mock_client.send("NS94")
+    assert mock_client.state["net_osd"]["items"][2]["is_playing"] is True
+
+    await mock_client.send("MSQUICK2")
+    assert mock_client.state["source"] == "IRADIO"
+    assert mock_client.state["net_osd"]["items"][3]["is_playing"] is True

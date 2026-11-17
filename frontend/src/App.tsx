@@ -16,6 +16,7 @@ import ToneControls from './components/ToneControls'
 import SubwooferLevel from './components/SubwooferLevel'
 import AudioSettings from './components/AudioSettings'
 import MediaControls from './components/MediaControls'
+import NetOsdControl from './components/NetOsdControl'
 import Zone2Controls from './components/Zone2Controls'
 import CacheReset from './components/CacheReset'
 import ZoneTabs from './components/ZoneTabs'
@@ -85,6 +86,11 @@ export default function App() {
     if (res.ok) await reloadDeviceInfo()
     return res
   }, [post, del, reloadDeviceInfo])
+
+  const openLegacyNet = useCallback(() => {
+    setActiveSection('net')
+    void post('/net/refresh')
+  }, [post])
 
   // Loading — waiting for first WebSocket message
   if (!state) {
@@ -178,7 +184,7 @@ export default function App() {
         <>
           {/* Section tabs (desktop; mobile uses the bottom nav) */}
           <div className="hidden sm:block">
-            <SectionTabs section={activeSection} onChange={setActiveSection} />
+            <SectionTabs section={activeSection} onChange={setActiveSection} highlightNet={state.heos_connected === false} />
           </div>
 
           <div className="space-y-4 fade-in" key={activeSection}>
@@ -186,7 +192,7 @@ export default function App() {
               <>
                 <MemoPowerControl state={state} sendCommand={sendCommand} zone="main" />
                 <MemoVolumeControl state={state} sendCommand={sendCommand} post={post} />
-                <MemoMediaControls state={state} post={post} mediaSources={mediaSources} />
+                <MemoMediaControls state={state} post={post} mediaSources={mediaSources} onOpenLegacyNet={openLegacyNet} />
                 <MemoSourceSelector
                   state={state}
                   sendCommand={sendCommand}
@@ -196,6 +202,7 @@ export default function App() {
                   radioFavorites={radioFavorites}
                   onRenameSource={renameSource}
                   onRadioFavoriteChange={saveRadioFavorite}
+                  onOpenLegacyRadio={openLegacyNet}
                 />
                 <SurroundMode
                   state={state}
@@ -204,6 +211,10 @@ export default function App() {
                   fallbackModes={surroundModes}
                 />
               </>
+            )}
+
+            {activeSection === 'net' && (
+              <NetOsdControl state={state} post={post} />
             )}
 
             {activeSection === 'speakers' && (
@@ -256,7 +267,7 @@ export default function App() {
         <ZoneTabs zone={zone} onChange={setZone} mainName={zoneName} zone2Name={z2Name} compact />
         {/* Section tabs (main zone only) */}
         {zone === 'main' && (
-          <SectionTabs section={activeSection} onChange={setActiveSection} compact />
+          <SectionTabs section={activeSection} onChange={setActiveSection} highlightNet={state.heos_connected === false} compact />
         )}
       </div>
     </nav>

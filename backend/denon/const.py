@@ -183,6 +183,34 @@ KNOWN_MODE_COMMANDS = {
 # controls also drive. /device.media_sources = HEOS_SOURCES + these.
 MEDIA_INPUT_SOURCES = ("MPLAY", "USB", "USB/IPOD")
 
+# Legacy Telnet OSD (NSE) navigation, transport & preset commands
+NET_NAV_COMMANDS: dict[str, str] = {
+    "up": "NS90",
+    "down": "NS91",
+    "left": "NS92",
+    "right": "NS93",
+    "enter": "NS94",
+    "play_pause": "NS9A",
+    "pause": "NS9B",
+    "stop": "NS9C",
+    "next": "NS9D",
+    "prev": "NS9E",
+}
+
+NET_PRESET_COMMANDS: frozenset[str] = frozenset({
+    *(f"ZMFAVORITE{i}" for i in range(1, 5)),
+    *(f"MSQUICK{i}" for i in range(1, 5)),
+})
+
+NET_SWITCH_SOURCES: frozenset[str] = frozenset({
+    "IRADIO",
+    "NET",
+    "SERVER",
+    "FAVORITES",
+    "USB",
+    "USB/IPOD",
+})
+
 # Fallback surround modes for receivers that don't send OPSMLALL
 SURROUND_MODES = [
     "DIRECT", "PURE DIRECT", "STEREO",
@@ -204,4 +232,5 @@ QUERY_COMMANDS = [
     "PSREFLEV ?",
     "Z2?", "Z2MU?", "Z2SLP?",
     "SLP?", "ECO?",
+    "NSE",
 ]
