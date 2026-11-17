@@ -136,6 +136,25 @@ class MockDenonClient(DenonTelnetClient):
         lines.append(f"NSE8{status}")
         return lines
 
+    async def simulate_search(self, keyword: str) -> None:
+        """Simulate legacy HTTP NetAudio keyword search results in demo mode."""
+        self._nse_folder = f"Search: {keyword}"
+        self._nse_cursor = 1
+        self._nse_playing_idx = None
+        lines = [
+            f"NSE0Search: {keyword}",
+            f"NSE1\x08{keyword} FM",
+            f"NSE2\x00{keyword} Classics",
+            "NSE3\x00",
+            "NSE4\x00",
+            "NSE5\x00",
+            "NSE6\x00",
+            "NSE7\x00",
+            "NSE81/2",
+        ]
+        for line in lines:
+            await self._parse(line)
+
     def _simulate(self, cmd: str) -> list[str]:  # noqa: C901
         s = self.state
 

@@ -84,4 +84,27 @@ describe('NetOsdControl', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Quick 3' }))
     await waitFor(() => expect(post).toHaveBeenCalledWith('/net/preset', { preset: 'MSQUICK3' }))
   })
+
+  it('auto-opens keyword search input on Station search screen and submits POST /net/search', async () => {
+    const post = okPost()
+    const searchPromptState: ReceiverState = {
+      ...menuState,
+      net_osd: {
+        title: 'Station',
+        status_line: '[ 2/2 ]',
+        items: [
+          { index: 1, text: 'a', is_selected: false, is_playing: false, is_folder: false },
+          { index: 2, text: 'abcdefghijklm', is_selected: false, is_playing: false, is_folder: false },
+          ...menuState.net_osd!.items.slice(2),
+        ],
+      },
+    }
+    render(<NetOsdControl state={searchPromptState} post={post} />)
+    const input = screen.getByLabelText('Search station by keyword')
+    fireEvent.change(input, { target: { value: 'wdr 2' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    await waitFor(() => {
+      expect(post).toHaveBeenCalledWith('/net/search', { keyword: 'wdr 2' })
+    })
+  })
 })

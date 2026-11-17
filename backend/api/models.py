@@ -203,6 +203,21 @@ class NetPresetRequest(BaseModel):
     ]
 
 
+class NetSearchRequest(BaseModel):
+    keyword: str = Field(..., min_length=1, max_length=30,
+                         description="Keyword for legacy Internet Radio search")
+
+    @field_validator("keyword")
+    @classmethod
+    def _clean_keyword(cls, v: str) -> str:
+        cleaned = "".join(c for c in v if ord(c) >= 0x20 and c != "\x7f").strip()
+        if not cleaned:
+            raise ValueError("keyword must contain printable characters")
+        if "/" in cleaned:
+            raise ValueError("keyword must not contain '/'")
+        return cleaned
+
+
 # -- Response models --
 
 class NetOsdItem(BaseModel):

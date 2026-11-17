@@ -167,3 +167,75 @@ async def test_net_select_row_moves_down_and_up_and_guards_no_cursor(mock_state,
             ]
     finally:
         app_state.telnet = None
+
+
+@pytest.mark.asyncio
+async def test_net_search_posts_netaudio_form_and_refreshes_nse(mock_state, monkeypatch):
+    from main import app
+    from state import app_state
+
+    monkeypatch.setattr(net_routes, "SEARCH_REFRESH_DELAY", 0.0)
+    posted: list[tuple[str, dict]] = []
+
+    class FakeResp:
+        def raise_for_status(self):
+            return None
+
+    class FakeHttpClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def post(self, url: str, data: dict):
+            posted.append((url, data))
+            return FakeResp()
+
+    monkeypatch.setattr(net_routes.httpx, "AsyncClient", FakeHttpClient)
+    app_state.telnet = _make_mock_telnet(mock_state)
+    app_state.receiver_host = "192.168.1.70"
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            ok_resp = await ac.post("/api/v1/net/search", json={"keyword": "wdr 2"})
+            bad_slash = await ac.post("/api/v1/net/search", json={"keyword": "wdr/2"})
+            bad_empty = await ac.post("/api/v1/net/search", json={"keyword": "   "})
+
+        assert ok_resp.status_code == 200
+        assert bad_slash.status_code == 422
+        assert bad_empty.status_code == 422
+        assert posted == [(
+            "http://192.168.1.70/NetAudio/index.put.asp",
+            {
+                "cmd0": "PutNetFuncSearchiRadio/wdr 2",
+                "cmd1": "aspMainZone_WebUpdateStatus/",
+                "ZoneName": "MAIN ZONE",
+            },
+        )]
+        assert [c.args[0] for c in app_state.telnet.send.call_args_list] == ["NSE"]
+    finally:
+        app_state.telnet = None
+        app_state.receiver_host = None
+
+
+@pytest.mark.asyncio
+async def test_net_search_mock_client():
+    from denon.mock_client import MockDenonClient
+    from main import app
+    from state import app_state
+
+    mock = MockDenonClient()
+    app_state.telnet = mock
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post("/api/v1/net/search", json={"keyword": "jazz"})
+        assert resp.status_code == 200
+        assert mock.state["net_osd"]["title"] == "Search: jazz"
+        assert mock.state["net_osd"]["items"][0]["text"] == "jazz FM"
+    finally:
+        app_state.telnet = None

@@ -34,6 +34,8 @@ const TRANSPORT_BUTTONS: { action: string; label: string; title: string }[] = [
 export default function NetOsdControl({ state, post }: Props) {
   const [busy, setBusy] = useState(false)
   const [presetBank, setPresetBank] = useState<PresetBank>('favorite')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [keyword, setKeyword] = useState('')
 
   const osd = state.net_osd
   const title = osd?.title?.trim() || 'Net / Radio (Telnet)'
@@ -44,6 +46,10 @@ export default function NetOsdControl({ state, post }: Props) {
     item => item.text.trim() !== '' || item.is_selected || item.is_playing,
   )
   const hasCursor = items.some(item => item.is_selected)
+  const isSearchPrompt =
+    title.toLowerCase() === 'station' &&
+    visibleItems.some(item => /abcdefghijklm|nopqrstuvwxyz/i.test(item.text))
+  const showSearchBox = isSearchPrompt || searchOpen
   const heosUp = state.heos_connected === true
 
   const runAction = async (fn: () => Promise<unknown>) => {
@@ -71,6 +77,16 @@ export default function NetOsdControl({ state, post }: Props) {
   const recallPreset = (slot: number) => {
     const preset = presetBank === 'favorite' ? `ZMFAVORITE${slot}` : `MSQUICK${slot}`
     void runAction(() => post('/net/preset', { preset }))
+  }
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    const trimmed = keyword.trim()
+    if (!trimmed) return
+    void runAction(async () => {
+      const res = await post('/net/search', { keyword: trimmed })
+      if (res.ok) setKeyword('')
+    })
   }
 
   return (
@@ -120,6 +136,20 @@ export default function NetOsdControl({ state, post }: Props) {
             </button>
             <button
               type="button"
+              onClick={() => setSearchOpen(v => !v)}
+              aria-pressed={showSearchBox}
+              aria-label="Toggle keyword search"
+              title="Search by Keyword"
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all active:scale-95 ${
+                showSearchBox
+                  ? 'bg-denon-gold/20 text-denon-gold border border-denon-gold/40'
+                  : 'bg-denon-surface text-denon-text hover:bg-denon-border'
+              }`}
+            >
+              🔍
+            </button>
+            <button
+              type="button"
               onClick={refreshOsd}
               disabled={busy}
               aria-label="Refresh OSD"
@@ -139,6 +169,35 @@ export default function NetOsdControl({ state, post }: Props) {
             </button>
           </div>
         </div>
+
+        {/* Keyword Search Input (shown automatically on AVR Station search prompt or via toggle) */}
+        {showSearchBox && (
+          <form onSubmit={submitSearch} className="space-y-1.5">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={keyword}
+                onChange={e => setKeyword(e.target.value)}
+                maxLength={30}
+                placeholder="Search station by keyword..."
+                aria-label="Search station by keyword"
+                className="flex-1 min-w-0 bg-denon-surface/80 border border-denon-gold/40 rounded-xl px-3 py-2 text-sm text-denon-text placeholder:text-denon-muted/60 focus:outline-none focus:border-denon-gold"
+              />
+              <button
+                type="submit"
+                disabled={busy || !keyword.trim()}
+                className="btn-primary text-xs px-4 py-2 shrink-0"
+              >
+                Search
+              </button>
+            </div>
+            {isSearchPrompt && (
+              <p className="text-[11px] text-denon-gold/90">
+                Receiver is waiting for a keyword — enter your search term above and press Search.
+              </p>
+            )}
+          </form>
+        )}
 
         {/* OSD List (NSE1–NSE7) */}
         {visibleItems.length === 0 ? (

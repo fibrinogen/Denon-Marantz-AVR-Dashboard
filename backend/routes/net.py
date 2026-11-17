@@ -2,24 +2,32 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.models import (
     NetNavRequest,
     NetPresetRequest,
+    NetSearchRequest,
     NetSelectRowRequest,
     NetSwitchSourceRequest,
 )
+from calibration import is_private_host
 from denon.const import NET_NAV_COMMANDS
+from denon.mock_client import MockDenonClient
 from dependencies import get_app_state
 from routes._helpers import require_telnet, send_command
 from state import AppState
+
+_LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/net", tags=["net"])
 
 ROW_STEP_DELAY = 0.12  # 120 ms between NS90/NS91 cursor steps
 SOURCE_SWITCH_DELAY = 0.35  # brief wait after SIIRADIO/SINET before polling NSE
+SEARCH_REFRESH_DELAY = 0.5  # brief wait after HTTP NetAudio search before polling NSE
 
 
 @router.post("/refresh")
@@ -87,3 +95,38 @@ async def net_preset(
 ) -> dict:
     """Recall a receiver favorite (ZMFAVORITE1-4) or quick select (MSQUICK1-4)."""
     return await send_command(state, req.preset)
+
+
+@router.post("/search")
+async def net_search(
+    req: NetSearchRequest,
+    state: AppState = Depends(get_app_state),
+) -> dict:
+    """Submit a legacy Internet Radio keyword search via the AVR's HTTP NetAudio API."""
+    telnet = require_telnet(state)
+    if isinstance(telnet, MockDenonClient):
+        await telnet.simulate_search(req.keyword)
+        return {"ok": True, "keyword": req.keyword}
+
+    host = state.receiver_host or telnet.host
+    addr = is_private_host(host or "")
+    if addr is None:
+        raise HTTPException(400, "Invalid receiver host")
+
+    url = f"http://{str(addr)}/NetAudio/index.put.asp"
+    payload = {
+        "cmd0": f"PutNetFuncSearchiRadio/{req.keyword}",
+        "cmd1": "aspMainZone_WebUpdateStatus/",
+        "ZoneName": "MAIN ZONE",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(url, data=payload)
+            resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        _LOGGER.warning("Legacy NetAudio search failed against %s: %s", addr, exc)
+        raise HTTPException(502, "Receiver HTTP search failed") from exc
+
+    await asyncio.sleep(SEARCH_REFRESH_DELAY)
+    await send_command(state, "NSE")
+    return {"ok": True, "keyword": req.keyword}
