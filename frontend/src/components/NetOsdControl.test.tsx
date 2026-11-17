@@ -31,7 +31,7 @@ describe('NetOsdControl', () => {
     expect(screen.getByText('Legacy Mode')).toBeInTheDocument()
     expect(screen.getByText('My Favorites')).toBeInTheDocument()
     expect(screen.getByText('WDR 2 Köln')).toBeInTheDocument()
-    expect(screen.getByText('Playing')).toBeInTheDocument()
+    expect(screen.getByText('♪')).toBeInTheDocument()
     expect(screen.getByTestId('net-osd-status')).toHaveTextContent('1/15')
   })
 
@@ -44,21 +44,28 @@ describe('NetOsdControl', () => {
     })
   })
 
-  it('disables row clicks when no cursor row is selected (Now Playing view)', () => {
+  it('renders clean Now Playing view and omits empty playing rows', () => {
     const post = okPost()
     const nowPlayingState: ReceiverState = {
       ...menuState,
       net_osd: {
         title: 'Now Playing',
-        status_line: '00:42',
-        items: menuState.net_osd!.items.map(item => ({ ...item, is_selected: false })),
+        status_line: '0:00 100%',
+        items: [
+          { index: 1, text: '', is_selected: false, is_playing: true, is_folder: false },
+          { index: 2, text: '', is_selected: false, is_playing: true, is_folder: false },
+          { index: 3, text: '48kHz', is_selected: false, is_playing: true, is_folder: false },
+          { index: 4, text: '', is_selected: false, is_playing: false, is_folder: false },
+          { index: 5, text: '0:00 100%', is_selected: false, is_playing: false, is_folder: false },
+          { index: 6, text: '', is_selected: false, is_playing: false, is_folder: false },
+          { index: 7, text: '', is_selected: false, is_playing: false, is_folder: false },
+        ],
       },
     }
     render(<NetOsdControl state={nowPlayingState} post={post} />)
-    const row = screen.getByRole('button', { name: /WDR 2 Köln/ })
-    expect(row).toBeDisabled()
-    fireEvent.click(row)
-    expect(post).not.toHaveBeenCalled()
+    expect(screen.getByTestId('net-osd-now-playing')).toBeInTheDocument()
+    expect(screen.getByText('48kHz')).toBeInTheDocument()
+    expect(screen.queryByText('—')).not.toBeInTheDocument()
   })
 
   it('dispatches source switch, refresh, navigation, transport, and preset actions', async () => {

@@ -43,9 +43,10 @@ export default function NetOsdControl({ state, post }: Props) {
   const statusLine = osd?.status_line?.trim() || ''
 
   const visibleItems = items.filter(
-    item => item.text.trim() !== '' || item.is_selected || item.is_playing,
+    item => item.text.trim() !== '' || item.is_selected,
   )
   const hasCursor = items.some(item => item.is_selected)
+  const isNowPlaying = !hasCursor && /^now playing/i.test(title)
   const isSearchPrompt =
     title.toLowerCase() === 'station' &&
     visibleItems.some(item => /abcdefghijklm|nopqrstuvwxyz/i.test(item.text))
@@ -199,7 +200,7 @@ export default function NetOsdControl({ state, post }: Props) {
           </form>
         )}
 
-        {/* OSD List (NSE1–NSE7) */}
+        {/* OSD List / Now Playing (NSE1–NSE7) */}
         {visibleItems.length === 0 ? (
           <div className="rounded-xl bg-denon-surface/40 border border-denon-border/40 py-8 px-4 text-center space-y-3">
             <p className="text-sm text-denon-muted">
@@ -224,6 +225,34 @@ export default function NetOsdControl({ state, post }: Props) {
               </button>
             </div>
           </div>
+        ) : isNowPlaying ? (
+          <div
+            className="rounded-xl bg-denon-green/5 border border-denon-green/25 p-4 space-y-2"
+            data-testid="net-osd-now-playing"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-medium text-denon-green uppercase tracking-wider">
+                ▶ Playing
+              </span>
+              {statusLine && (
+                <span className="text-[11px] text-denon-muted font-mono">{statusLine}</span>
+              )}
+            </div>
+            <div className="space-y-1">
+              {visibleItems.map((item, idx) => (
+                <p
+                  key={item.index}
+                  className={
+                    idx === 0
+                      ? 'text-sm font-semibold text-denon-text truncate'
+                      : 'text-xs text-denon-muted truncate'
+                  }
+                >
+                  {item.text}
+                </p>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="space-y-1.5" role="list" aria-label="Receiver OSD menu">
             {visibleItems.map(item => {
@@ -238,9 +267,7 @@ export default function NetOsdControl({ state, post }: Props) {
                   className={`w-full min-h-[44px] px-3 py-2.5 rounded-xl border text-left flex items-center gap-2.5 transition-all ${
                     item.is_selected
                       ? 'bg-denon-gold/15 border-denon-gold/40 text-denon-gold shadow-sm'
-                      : item.is_playing
-                        ? 'bg-denon-green/10 border-denon-green/30 text-denon-text'
-                        : 'bg-denon-surface/60 border-denon-border/30 text-denon-text'
+                      : 'bg-denon-surface/60 border-denon-border/30 text-denon-text'
                   } ${
                     clickable
                       ? 'hover:bg-denon-surface active:scale-[0.99] cursor-pointer'
@@ -248,17 +275,12 @@ export default function NetOsdControl({ state, post }: Props) {
                   }`}
                 >
                   <span className="w-5 text-center text-xs font-mono text-denon-muted shrink-0">
-                    {item.is_playing ? '▶' : item.is_folder ? '📁' : `${item.index}.`}
+                    {item.is_folder ? '📁' : item.is_playing ? '♪' : `${item.index}.`}
                   </span>
                   <span className="flex-1 text-sm font-medium truncate">
                     {item.text || '—'}
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {item.is_playing && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-denon-green/15 text-denon-green font-medium">
-                        Playing
-                      </span>
-                    )}
                     {item.is_folder && (
                       <span className="text-xs text-denon-muted" aria-hidden="true">
                         ›
