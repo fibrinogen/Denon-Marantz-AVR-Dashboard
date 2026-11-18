@@ -195,6 +195,8 @@ NET_NAV_COMMANDS: dict[str, str] = {
     "stop": "NS9C",
     "next": "NS9D",
     "prev": "NS9E",
+    "page_up": "NS9X",
+    "page_down": "NS9Y",
 }
 
 NET_PRESET_COMMANDS: frozenset[str] = frozenset({

@@ -189,7 +189,11 @@ class NetSwitchSourceRequest(BaseModel):
 
 
 class NetNavRequest(BaseModel):
-    action: Literal["up", "down", "left", "right", "enter", "play_pause", "pause", "stop", "next", "prev"]
+    action: Literal[
+        "up", "down", "left", "right", "enter",
+        "play_pause", "pause", "stop", "next", "prev",
+        "page_up", "page_down",
+    ]
 
 
 class NetSelectRowRequest(BaseModel):

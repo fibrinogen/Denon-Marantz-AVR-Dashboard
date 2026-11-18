@@ -96,6 +96,8 @@ async def test_net_refresh_and_nav_and_preset(mock_state):
         async with AsyncClient(transport=transport, base_url="http://test") as ac:
             r1 = await ac.post("/api/v1/net/refresh")
             r2 = await ac.post("/api/v1/net/nav", json={"action": "enter"})
+            r2b = await ac.post("/api/v1/net/nav", json={"action": "page_up"})
+            r2c = await ac.post("/api/v1/net/nav", json={"action": "page_down"})
             r3 = await ac.post("/api/v1/net/nav", json={"action": "invalid"})
             r4 = await ac.post("/api/v1/net/preset", json={"preset": "ZMFAVORITE2"})
             r5 = await ac.post("/api/v1/net/preset", json={"preset": "MSQUICK3"})
@@ -103,12 +105,14 @@ async def test_net_refresh_and_nav_and_preset(mock_state):
 
         assert r1.status_code == 200
         assert r2.status_code == 200
+        assert r2b.status_code == 200
+        assert r2c.status_code == 200
         assert r3.status_code == 422
         assert r4.status_code == 200
         assert r5.status_code == 200
         assert r6.status_code == 422
         sent = [call.args[0] for call in app_state.telnet.send.call_args_list]
-        assert sent == ["NSE", "NS94", "ZMFAVORITE2", "MSQUICK3"]
+        assert sent == ["NSE", "NS94", "NS9X", "NS9Y", "ZMFAVORITE2", "MSQUICK3"]
     finally:
         app_state.telnet = None
 

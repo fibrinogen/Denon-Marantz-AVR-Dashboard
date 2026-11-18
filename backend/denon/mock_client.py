@@ -227,6 +227,9 @@ class MockDenonClient(DenonTelnetClient):
             self._nse_cursor = max(3, self._nse_cursor - 1)
             self._nse_playing_idx = self._nse_cursor
             return self._nse_lines()
+        if cmd in ("NS9X", "NS9Y"):
+            self._nse_cursor = 1 if cmd == "NS9X" else 7
+            return self._nse_lines()
         if cmd.startswith(("ZMFAVORITE", "MSQUICK")) and cmd[-1:].isdigit():
             slot = int(cmd[-1])
             self._nse_cursor = min(7, slot + 2)
